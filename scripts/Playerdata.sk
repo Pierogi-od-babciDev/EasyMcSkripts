@@ -1,0 +1,131 @@
+# ----------------------------------------------------------------------- #
+#  PROJECT: EasyMcSkripts                                                 #
+#  MODULE:  Player Data Manager                                           #
+#  VERSION: 1.0.0 (October 2026)                                          #
+#                                                                         #
+#  AUTHOR:  Pierogi od babci | Dev                                        #
+#  GITHUB:  https://github.com/Pierogi-od-babciDev/EasyMcSkripts          #
+#  SUPPORT: buymeacoffee.com/Pierogi.od.babciDev                          #
+#                                                                         #
+#  ADDONS:  SkBee 3.13.3, skript-reflect (Required for file deletion)     #
+#                                                                         #
+#  LICENSE: GNU GPLv3 (Open-Source)                                       #
+#  Copyright (c) 2026 Pierogi od babci | Dev. All rights reserved.        #
+# ----------------------------------------------------------------------- #
+
+# Java code import
+import:
+    java.io.File
+
+# These settings apply to the entire script.
+options:
+
+    # That value (In my case is "del") is for the [<text>] (options) to delete minecraft player data.
+    del-command: del
+
+    # That is the Tag, it will appear when you try to use command.
+    chat-tag: &8[&b&l-PLAYERDATA-&8] &r
+    continue-tag: &a[&l-CONTINUE-] &r
+    cancel-tag: &c[&l-CANCEL-] &r
+
+    # DESCRIPTIONS
+    continue-d: &aIm sure, go continue! # That is the continue button description
+    cancel-d: &cNo, I want to cancel that acction! # That is the cancel button description
+
+    permission-ac: admin.pd # The "admin.pd" is the permission to use /pd command.
+    permission-msg: &c[ERROR!] &8 You don't have permission to use this command. # permission-msg is the message that will be send to someone who is trying to use command, while not having permission.
+
+ #This is command for player data
+command /pd [<text>] [<player>]:
+    permission: {@permission-ac}
+    permission message: {@permission-msg}
+    trigger:
+        # Check if administrator use your del-command
+        if arg 1 is "{@del-command}":
+            if arg 2 is set:
+
+                # We save nick of player to our memory and use string
+                set {use::%player%} to 0
+                set {pd.target::%player%} to arg 2
+
+                # 1. Send safety buttons.
+                send "&7==================================================" to player
+                send " " to player
+                send "                 &6&lACTION CONFIRMATION" to player
+                send "         &eAre you sure you wanna continue?" to player
+                send "     &cIt will &lPERMANENTLY&r&c delete &b%arg 2%&c data" to player
+                send " " to player
+
+                # 1.1 Create a CONTINUE button
+                # Hovering over it displays a description, and clicking it executes a command.
+                set {_btn-continue} to text component of "{@continue-tag}"
+                set hover event of {_btn-continue} to hover event showing "{@continue-d}"
+                create a new click event callback for {_btn-continue}:
+                    set {use::%player%} to 1
+                
+                # 1.2 Create a CANCEL button
+                # Hovering over it displays a description, and clicking it executes a command.
+                set {_btn-cancel} to text component of "{@cancel-tag}"
+                set hover event of {_btn-cancel} to hover event showing "{@cancel-d}"
+                create a new click event callback for {_btn-cancel}:
+                    set {use::%player%} to 2
+                
+                # 1.3 Sending both buttons to the player in a single line
+                # The word "and" connects them, and the space between them creates a nice gap.
+                send text component {_btn-continue}, text component of "   " and {_btn-cancel} to player
+
+                send " " to player
+                send "&7==================================================" to player
+            else:
+                if arg 2 is not set:
+                    send "{@chat-tag}&7Try use this! /pd {@del-command} player" to player
+            
+            # While our string "use" is 0, wait another second
+            while {use::%player%} is 0:
+                wait 1 second
+            
+            # If we click continue (string "use" is 1)
+            if {use::%player%} is 1:
+                set {_target} to {pd.target::%player%}
+                set {_uuid} to uuid of {_target}
+
+                # There is a time for clean minecraft
+                execute console command "minecraft:clear %{_target}%"
+                execute console command "minecraft:effect clear %{_target}%"
+
+                # If we dont kick player it will dont work
+                kick {_target} due to "&cYour player data is being permanently wiped!"
+
+                # It will delete a real file 
+                set {_file} to new File("world/playerdata/%{_uuid}%.dat")
+                {_file}.delete()
+
+                set {_fileold} to new File("world/playerdata/%{_uuid}%.dat_old")
+                {_fileold}.delete()
+
+                send "{@chat-tag} &aFile %{_uuid}%.dat is permanently deleted!" to player
+
+                # Clear a script memory
+                delete {pd.target::%player%}
+                delete {_uuid}
+                delete {_target}
+                set {use::%player%} to 0
+            
+            # If we click cancel (string "use" is 2)
+            if {use::%player%} is 2:
+                if {pd.target::%player%} is set:
+                    # We send information that acction is canceld, and nothing is deleted
+                    send "{@chat-tag} &cAction was canceled. Player files are safe." to player
+
+                    # Clear script memory
+                    delete {pd.target::%player%}
+                    delete {_uuid}
+                    delete {_target}
+                    set {use::%player%} to 0
+                else:
+                    send "{@chat-tag} &cThere is nothing to cancel." to player
+        
+        # If is not set
+        else:
+            set {use::%player%} to 0
+            send "{@chat-tag} &cYou have spelled a wrong use or there is not that command." to player
